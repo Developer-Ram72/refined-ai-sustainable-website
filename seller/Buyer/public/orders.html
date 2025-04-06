@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Orders</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,200;1,200&display=swap" rel="stylesheet">
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <style>
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background: #1e293b;
+            color: #bde6d7;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .orders-container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .order-card {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(52, 211, 153, 0.2);
+        }
+
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(52, 211, 153, 0.2);
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        .order-items {
+            display: grid;
+            gap: 15px;
+        }
+
+        .order-item {
+            display: flex;
+            gap: 15px;
+            background: rgba(52, 211, 153, 0.1);
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .item-image {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 5px;
+        }
+
+        .return-btn {
+            background: #34d399;
+            color: #1e293b;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .return-form {
+            display: none;
+            margin-top: 15px;
+            padding: 15px;
+            background: rgba(52, 211, 153, 0.1);
+            border-radius: 8px;
+        }
+
+        .return-form.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 10px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #34d399;
+        }
+
+        .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid #34d399;
+            border-radius: 5px;
+            color: #bde6d7;
+        }
+
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.8em;
+        }
+
+        .status-pending { background: #ffd700; color: #1e293b; }
+        .status-delivered { background: #34d399; color: #1e293b; }
+        .status-returned { background: #ff4d4d; color: #fff; }
+
+        .cancel-form {
+            display: none;
+            margin-top: 15px;
+            padding: 15px;
+            background: rgba(255, 77, 77, 0.1);
+            border-radius: 8px;
+        }
+
+        .cancel-form.active {
+            display: block;
+        }
+
+        .cancel-btn {
+            background: #ff4d4d;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+
+        #otherReason {
+            display: none;
+            margin-top: 10px;
+        }
+
+        #otherReason.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="orders-container">
+        <h1>My Orders</h1>
+        <div id="ordersList"></div>
+    </div>
+
+    <script>
+        const cancelReasons = [
+            "Changed my mind",
+            "Found better price elsewhere",
+            "Ordered wrong item",
+            "Shipping time too long",
+            "Other"
+        ];
+
+        async function loadOrders() {
+            try {
+                const response = await fetch('/api/orders/temp-user');
+                const orders = await response.json();
+                const container = document.getElementById('ordersList');
+
+                container.innerHTML = orders.map(order => `
+                    <div class="order-card">
+                        <div class="order-header">
+                            <div>
+                                <h3>Order #${order._id}</h3>
+                                <p>Placed on: ${new Date(order.orderDate).toLocaleDateString()}</p>
+                            </div>
+                            <div>
+                                <span class="status-badge status-${order.status}">${order.status}</span>
+                                <p>Total: $${order.totalAmount}</p>
+                                ${order.status === 'pending' ? `
+                                    <button class="cancel-btn" onclick="showCancelForm('${order._id}')">
+                                        Cancel Order
+                                    </button>
+                                ` : ''}
+                            </div>
+                        </div>
+                        
+                        <div class="order-items">
+                            ${order.items.map(item => `
+                                <div class="order-item">
+                                    
+                                    <div>
+                                        <h4>${item.name}</h4>
+                                        <p>Quantity: ${item.quantity}</p>
+                                        <p>Price: $${item.price}</p>
+                                    </div>
+                                    ${order.status === 'delivered' && !order.returnStatus ? `
+                                        <button class="return-btn" onclick="showReturnForm('${order._id}', '${item.productId}')">
+                                            Return/Replace
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        <div id="cancelForm-${order._id}" class="cancel-form">
+                            <div class="form-group">
+                                <label>Reason for Cancellation</label>
+                                <select id="cancelReason-${order._id}" onchange="toggleOtherReason('${order._id}')">
+                                    ${cancelReasons.map(reason => 
+                                        `<option value="${reason}">${reason}</option>`
+                                    ).join('')}
+                                </select>
+                                <textarea id="otherReason-${order._id}" 
+                                          placeholder="Please specify your reason"
+                                          class="form-group"
+                                          style="display: none;"></textarea>
+                            </div>
+                            <button class="cancel-btn" onclick="submitCancel('${order._id}')">
+                                Confirm Cancellation
+                            </button>
+                        </div>
+
+                        <div id="returnForm-${order._id}" class="return-form">
+                            <div class="form-group">
+                                <label>Type</label>
+                                <select id="returnType-${order._id}">
+                                    <option value="return">Return</option>
+                                    <option value="replacement">Replacement</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Reason</label>
+                                <textarea id="returnReason-${order._id}" rows="3"></textarea>
+                            </div>
+                            <button class="return-btn" onclick="submitReturn('${order._id}')">
+                                Submit Request
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading orders:', error);
+            }
+        }
+
+        function toggleOtherReason(orderId) {
+            const select = document.getElementById(`cancelReason-${orderId}`);
+            const otherInput = document.getElementById(`otherReason-${orderId}`);
+            otherInput.style.display = select.value === 'Other' ? 'block' : 'none';
+        }
+
+        function showCancelForm(orderId) {
+            document.getElementById(`cancelForm-${orderId}`).classList.add('active');
+        }
+
+        async function submitCancel(orderId) {
+            try {
+                const reasonSelect = document.getElementById(`cancelReason-${orderId}`);
+                const otherReasonText = document.getElementById(`otherReason-${orderId}`);
+                const reason = reasonSelect.value === 'Other' ? otherReasonText.value : reasonSelect.value;
+
+                if (!reason) {
+                    alert('Please provide a reason for cancellation');
+                    return;
+                }
+
+                const response = await fetch(`/api/orders/${orderId}/cancel`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reason })
+                });
+
+                if (response.ok) {
+                    alert('Order cancelled successfully');
+                    loadOrders();
+                } else {
+                    throw new Error('Failed to cancel order');
+                }
+            } catch (error) {
+                console.error('Error cancelling order:', error);
+                alert('Failed to cancel order');
+            }
+        }
+
+        function showReturnForm(orderId) {
+            document.getElementById(`returnForm-${orderId}`).classList.add('active');
+        }
+
+        async function submitReturn(orderId) {
+            try {
+                const type = document.getElementById(`returnType-${orderId}`).value;
+                const reason = document.getElementById(`returnReason-${orderId}`).value;
+
+                const response = await fetch(`/api/orders/${orderId}/return`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type, reason })
+                });
+
+                if (response.ok) {
+                    alert('Return request submitted successfully');
+                    loadOrders();
+                } else {
+                    throw new Error('Failed to submit return request');
+                }
+            } catch (error) {
+                console.error('Error submitting return:', error);
+                alert('Failed to submit return request');
+            }
+        }
+
+        // Load orders when page loads
+        loadOrders();
+    </script>
+</body>
+</html>

@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Analytics</title>
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Montserrat', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #1e293b;
+            color: #bde6d7;
+        }
+
+        .dashboard {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .card {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(52, 211, 153, 0.2);
+        }
+
+        .card h2 {
+            color: #34d399;
+            margin-top: 0;
+            font-size: 1.2em;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+
+        .recent-queries {
+            list-style: none;
+            padding: 0;
+        }
+
+        .recent-queries li {
+            padding: 10px;
+            margin: 5px 0;
+            background: rgba(52, 211, 153, 0.1);
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .stat-box {
+            background: rgba(52, 211, 153, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-box h3 {
+            margin: 0;
+            color: #34d399;
+            font-size: 2em;
+        }
+
+        .stat-box p {
+            margin: 5px 0 0;
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        .chat-history {
+            background: rgba(52, 211, 153, 0.05);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 10px;
+        }
+
+        .chat-entry {
+            border-bottom: 1px solid rgba(52, 211, 153, 0.2);
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+
+        .chat-entry:last-child {
+            border-bottom: none;
+        }
+
+        .chat-query {
+            color: #34d399;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .chat-response {
+            color: #bde6d7;
+            margin-left: 15px;
+        }
+
+        .chat-timestamp {
+            font-size: 0.8em;
+            color: rgba(189, 230, 215, 0.6);
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="card full-width">
+            <h2>Product Sales Overview</h2>
+            <div class="chart-container">
+                <canvas id="salesChart"></canvas>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Accurate Data Analysis</h2>
+            <ul class="recent-queries" id="recentQueries">
+                
+            </ul>
+        </div>
+
+        <div class="card">
+            <h2>Products will be updated fast</h2>
+            <ul class="recent-queries" id="recentProducts">
+                <!-- Products will be populated here -->
+            </ul>
+        </div>
+
+        <div class="card">
+            <h2>Quick Stats</h2>
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <h3 id="totalProducts">0</h3>
+                    <p>Total Products</p>
+                </div>
+                <div class="stat-box">
+                    <h3 id="totalChats">0</h3>
+                    <p>Chat Interactions</p>
+                </div>
+                <div class="stat-box">
+                    <h3 id="avgResponse">0s</h3>
+                    <p>Avg Response Time</p>
+                </div>
+                <div class="stat-box">
+                    <h3 id="activeUsers">0</h3>
+                    <p>Active Users</p>
+                </div>
+            </div>
+        </div><div class="card">
+            <h2>focus</h2>
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <h3 id="totalProducts">More</h3>
+                    <p>Reused Products</p>
+                </div>
+                <div class="stat-box">
+                    <h3 id="totalChats">Must</h3>
+                    <p>have Good Quality</p>
+                </div>
+                <div class="stat-box">
+                    <h3 id="avgResponse">More</h3>
+                    <p>Agricultural products</p>
+                </div>
+                <div class="stat-box">
+                    <h3 id="activeUsers">Must</h3>
+                    <p>Proper Return and Replacement</p>
+                </div>
+            </div>
+        </div>  
+
+        <div class="card full-width">
+            <h2>Chat History</h2>
+            <div id="chatHistory" class="chat-history">
+                <!-- Chat history will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Fetch and display analytics data
+        async function fetchAnalytics() {
+            try {
+                const response = await fetch('/api/analytics');
+                const data = await response.json();
+                updateDashboard(data);
+            } catch (error) {
+                console.error('Error fetching analytics:', error);
+            }
+        }
+
+        function updateDashboard(data) {
+            // Update stats
+            document.getElementById('totalProducts').textContent = data.totalProducts;
+            document.getElementById('totalChats').textContent = data.totalChats;
+            document.getElementById('avgResponse').textContent = data.avgResponseTime + 's';
+            document.getElementById('activeUsers').textContent = data.activeUsers;
+
+            // Update recent queries
+            const queriesList = document.getElementById('recentQueries');
+            queriesList.innerHTML = data.recentQueries
+                .map(query => `<li>${query.text} <small>${new Date(query.timestamp).toLocaleString()}</small></li>`)
+                .join('');
+
+            // Create sales chart
+            const ctx = document.getElementById('salesChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.StocksData.labels,
+                    datasets: [{
+                        label: 'Stocks',
+                        data: data.StocksData.values,
+                        borderColor: '#34d399',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: { color: '#bde6d7' }
+                        },
+                        x: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: { color: '#bde6d7' }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: { color: '#bde6d7' }
+                        }
+                    }
+                }
+            });
+
+            // Create product timeline chart
+            const timelineCtx = document.getElementById('productTimelineChart').getContext('2d');
+            new Chart(timelineCtx, {
+                type: 'bar',
+                data: {
+                    labels: data.productTimeline.labels,
+                    datasets: [{
+                        label: 'Products Created',
+                        data: data.productTimeline.values,
+                        backgroundColor: 'rgba(52, 211, 153, 0.4)',
+                        borderColor: '#34d399',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            ticks: { color: '#bde6d7' }
+                        },
+                        x: {
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            ticks: { color: '#bde6d7' }
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#bde6d7' } }
+                    }
+                }
+            });
+
+            // Update recent products
+            const productsList = document.getElementById('recentProducts');
+            productsList.innerHTML = data.recentProducts
+                .map(product => `
+                    <li>
+                        ${product.name}
+                        <small>${new Date(product.dateAdded).toLocaleString()}</small>
+                    </li>`)
+                .join('');
+        }
+
+        // Add function to fetch and display chat history
+        async function fetchChatHistory() {
+            try {
+                const response = await fetch('/api/chat-history');
+                const chatHistory = await response.json();
+                const chatContainer = document.getElementById('chatHistory');
+                
+                chatContainer.innerHTML = chatHistory.reverse().map(chat => `
+                    <div class="chat-entry">
+                        <div class="chat-query">Q: ${chat.query}</div>
+                        <div class="chat-response">A: ${chat.response}</div>
+                        <div class="chat-timestamp">${new Date(chat.timestamp).toLocaleString()}</div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error fetching chat history:', error);
+            }
+        }
+
+        // Update the initial load to include chat history
+        async function initializeAnalytics() {
+            await fetchAnalytics();
+            await fetchChatHistory();
+        }
+
+        // Initial load
+        initializeAnalytics();
+        // Refresh every 30 seconds
+        setInterval(initializeAnalytics, 30000);
+    </script>
+</body>
+</html>
